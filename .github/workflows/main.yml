@@ -55,7 +55,7 @@ jobs:
           NODE_ID=$(sudo tailscale status --json | jq -r '.Self.ID')
           echo "Node ID: $NODE_ID"
 
-          curl -X POST "https://api.tailscale.com/api/v2/tailnet/example.com/nodes/$NODE_ID/approve" \
+          curl -X POST "https://api.tailscale.com/api/v2/tailnet/mycompany.com/nodes/$NODE_ID/approve" \
             -u "${TS_API_KEY}:" \
             -H "Content-Type: application/json" \
             -d '{"Capabilities":["exit-node"]}'
