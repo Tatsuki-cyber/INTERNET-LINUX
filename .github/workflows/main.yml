@@ -25,9 +25,9 @@ jobs:
           sudo pkill -f tailscale || true
           sudo rm -f /tmp/tailscaled.state
 
-      - name: Install Tailscale
+      - name: Install Tailscale (IPv4 only)
         run: |
-          curl -fsSL https://tailscale.com/install.sh | sh
+          curl -4 -fsSL https://tailscale.com/install.sh | sh
 
       - name: Start tailscaled and bring up node (userspace)
         env:
