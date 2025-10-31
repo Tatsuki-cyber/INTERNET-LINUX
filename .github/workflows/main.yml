@@ -19,6 +19,12 @@ jobs:
           sudo apt update
           sudo apt install -y jq curl
 
+      - name: Stop any existing Tailscale
+        run: |
+          sudo pkill -f tailscaled || true
+          sudo pkill -f tailscale || true
+          sudo rm -f /tmp/tailscaled.state /tmp/tailscaled.sock
+
       - name: Install Tailscale
         run: |
           curl -fsSL https://tailscale.com/install.sh | sh
