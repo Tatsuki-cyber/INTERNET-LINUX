@@ -1,7 +1,7 @@
 name: Tailscale Exit Node Setup
 
 on:
-  workflow_dispatch:  # Manually trigger
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -29,15 +29,13 @@ jobs:
         run: |
           curl -fsSL https://tailscale.com/install.sh | sh
 
-      - name: Start Tailscaled and bring up node (userspace)
+      - name: Start tailscaled and bring up node (userspace)
         env:
           TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
         run: |
-          # Start tailscaled in userspace mode
           sudo tailscaled --state=/tmp/tailscaled.state --tun=userspace-networking &
           sleep 5
 
-          # Connect to Tailscale and advertise as an exit node
           sudo tailscale up \
             --authkey=${TAILSCALE_AUTH_KEY} \
             --hostname=github-exit-node \
@@ -52,13 +50,13 @@ jobs:
 
       - name: Auto-approve exit node
         env:
-          TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+          TS_API_KEY: ${{ secrets.TS_API_KEY }}
         run: |
           NODE_ID=$(sudo tailscale status --json | jq -r '.Self.ID')
           echo "Node ID: $NODE_ID"
 
           curl -X POST "https://api.tailscale.com/api/v2/tailnet/YOUR_TAILNET_NAME/nodes/$NODE_ID/approve" \
-            -u "${TAILSCALE_AUTH_KEY}:" \
+            -u "${TS_API_KEY}:" \
             -H "Content-Type: application/json" \
             -d '{"Capabilities":["exit-node"]}'
 
