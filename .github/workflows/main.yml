@@ -1,0 +1,61 @@
+name: Tailscale Exit Node Setup
+
+on:
+  workflow_dispatch:  # Manually trigger
+  push:
+    branches:
+      - main
+
+jobs:
+  setup-exit-node:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y jq curl
+
+      - name: Install Tailscale
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+
+      - name: Start Tailscaled and bring up node
+        env:
+          TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+        run: |
+          # Start the Tailscale daemon
+          sudo tailscaled --state=/tmp/tailscaled.state --socket=/tmp/tailscaled.sock &
+          sleep 5
+
+          # Connect to Tailscale and advertise as an exit node
+          sudo tailscale --socket=/tmp/tailscaled.sock up \
+            --authkey=${TAILSCALE_AUTH_KEY} \
+            --hostname=github-exit-node \
+            --advertise-exit-node
+
+      - name: Show Tailscale status
+        run: |
+          sudo tailscale --socket=/tmp/tailscaled.sock status
+          echo "Tailscale IPv4 Address:"
+          sudo tailscale --socket=/tmp/tailscaled.sock ip -4
+
+      - name: Auto-approve exit node
+        env:
+          TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+        run: |
+          NODE_ID=$(sudo tailscale --socket=/tmp/tailscaled.sock status --json | jq -r '.Self.ID')
+          echo "Node ID: $NODE_ID"
+
+          curl -X POST "https://api.tailscale.com/api/v2/tailnet/YOUR_TAILNET_NAME/nodes/$NODE_ID/approve" \
+            -u "${TAILSCALE_AUTH_KEY}:" \
+            -H "Content-Type: application/json" \
+            -d '{"Capabilities":["exit-node"]}'
+
+      - name: Keep runner alive indefinitely
+        run: |
+          echo "Exit node active indefinitely. Press Ctrl+C to stop."
+          while true; do sleep 3600; done
