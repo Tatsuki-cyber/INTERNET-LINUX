@@ -23,37 +23,38 @@ jobs:
         run: |
           sudo pkill -f tailscaled || true
           sudo pkill -f tailscale || true
-          sudo rm -f /tmp/tailscaled.state /tmp/tailscaled.sock
+          sudo rm -f /tmp/tailscaled.state
 
       - name: Install Tailscale
         run: |
           curl -fsSL https://tailscale.com/install.sh | sh
 
-      - name: Start Tailscaled and bring up node
+      - name: Start Tailscaled and bring up node (userspace)
         env:
           TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
         run: |
-          # Start the Tailscale daemon
-          sudo tailscaled --state=/tmp/tailscaled.state --socket=/tmp/tailscaled.sock &
+          # Start tailscaled in userspace mode
+          sudo tailscaled --state=/tmp/tailscaled.state --tun=userspace-networking &
           sleep 5
 
           # Connect to Tailscale and advertise as an exit node
-          sudo tailscale --socket=/tmp/tailscaled.sock up \
+          sudo tailscale up \
             --authkey=${TAILSCALE_AUTH_KEY} \
             --hostname=github-exit-node \
-            --advertise-exit-node
+            --advertise-exit-node \
+            --accept-routes
 
       - name: Show Tailscale status
         run: |
-          sudo tailscale --socket=/tmp/tailscaled.sock status
+          sudo tailscale status
           echo "Tailscale IPv4 Address:"
-          sudo tailscale --socket=/tmp/tailscaled.sock ip -4
+          sudo tailscale ip -4
 
       - name: Auto-approve exit node
         env:
           TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
         run: |
-          NODE_ID=$(sudo tailscale --socket=/tmp/tailscaled.sock status --json | jq -r '.Self.ID')
+          NODE_ID=$(sudo tailscale status --json | jq -r '.Self.ID')
           echo "Node ID: $NODE_ID"
 
           curl -X POST "https://api.tailscale.com/api/v2/tailnet/YOUR_TAILNET_NAME/nodes/$NODE_ID/approve" \
